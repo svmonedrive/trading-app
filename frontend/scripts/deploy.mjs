@@ -77,6 +77,7 @@ copy('packaging/setup.bat', 'setup.bat');
 copy('packaging/setup.ps1', 'setup.ps1');
 copy('packaging/uninstall.bat', 'uninstall.bat');
 copy('packaging/uninstall.ps1', 'uninstall.ps1');
+copy('packaging/Open NIFTYBEES Algo.cmd', 'Open NIFTYBEES Algo.cmd'); // fallback if shortcuts can't be created
 copy('packaging/GETTING_STARTED.md', 'GETTING_STARTED.md');
 const BUILT = new Date();
 const VERSION = BUILT.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
@@ -120,7 +121,7 @@ for (let attempt = 1; ; attempt++) {
   } catch (e) {
     if (attempt === 3) throw new Error(`Creating the zip failed:\n${e.stderr?.toString() ?? e.message}`);
     console.log(`  zip attempt ${attempt} failed (file busy?) - retrying in 3 s`);
-    execSync('powershell -NoProfile -Command "Start-Sleep -Seconds 3"');
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000); // sleep without starting another process
   }
 }
 const mb = (statSync(ZIP).size / 1024 / 1024).toFixed(1);

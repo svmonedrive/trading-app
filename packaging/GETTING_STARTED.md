@@ -19,6 +19,7 @@ A small app that runs on **your own Windows laptop**. It watches NIFTYBEES and p
 
 ## 2. Every day
 - Open the **NIFTYBEES Algo** shortcut. Everything starts by itself in the background, with no black windows, and the app opens in its own window.
+  - **No shortcut** (some company PCs block creating them): double-click **`Open NIFTYBEES Algo.cmd`** in the app folder instead. It does the same thing. To get a Desktop icon, right-click it and choose *Send to → Desktop (create shortcut)*.
 - **Login to Zerodha** (top right). Zerodha logs everyone out every morning around 6 AM.
 - If the **Public IP** bar is red, click **Fix** and follow the steps to whitelist your IP.
 

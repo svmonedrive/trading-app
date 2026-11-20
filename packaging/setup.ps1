@@ -7,7 +7,8 @@
 # To uninstall: run uninstall.bat, then delete this folder. Nothing else on the PC is touched.
 param(
     [switch]$NoStart,      # don't open the app at the end (unattended runs)
-    [switch]$NoShortcuts   # don't create shortcuts (testing)
+    [switch]$NoShortcuts,  # don't create shortcuts (testing)
+    [string]$ShortcutDir = ''  # create the shortcut only in this folder (testing)
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'   # Invoke-WebRequest is very slow with the progress bar on PowerShell 5.1
@@ -23,6 +24,28 @@ $AppName   = 'NIFTYBEES Algo'
 
 function Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Fail($msg) { Write-Host "`nERROR: $msg" -ForegroundColor Red; exit 1 }
+
+# Windows' shortcut API can hang on some PCs (seen with a OneDrive-synced Desktop / company security
+# software: the .lnk is written but the save call never returns). So each shortcut is made in a separate
+# helper process that is stopped after 15 s; a shortcut file that got written still counts as success.
+function New-AppShortcut([string]$LnkPath) {
+    $q = { param($s) $s.Replace("'", "''") }
+    $script = @"
+`$s = New-Object -ComObject WScript.Shell
+`$l = `$s.CreateShortcut('$(& $q $LnkPath)')
+`$l.TargetPath       = '$(& $q $PyW)'
+`$l.Arguments        = '"$(& $q (Join-Path $Root 'launcher.py'))" --app'
+`$l.WorkingDirectory = '$(& $q $Root)'
+`$l.IconLocation     = '$(& $q (Join-Path $Root 'app\favicon.ico'))'
+`$l.Description      = 'Open NIFTYBEES Algo (starts the trading backend in the background)'
+`$l.Save()
+"@
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
+    $p = Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -PassThru `
+        -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded
+    if (-not $p.WaitForExit(15000)) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+    return (Test-Path -LiteralPath $LnkPath) -and ((Get-Item -LiteralPath $LnkPath).Length -gt 0)
+}
 
 try {
     Write-Host "$AppName setup  ($Root)" -ForegroundColor Green
@@ -86,16 +109,16 @@ try {
     # ---------------------------------------------------------------- 4. shortcuts
     if (-not $NoShortcuts) {
         Step "Creating '$AppName' shortcuts (Desktop and Start menu)"
-        $shell = New-Object -ComObject WScript.Shell
-        foreach ($dir in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
-            $lnk = $shell.CreateShortcut((Join-Path $dir "$AppName.lnk"))
-            $lnk.TargetPath       = $PyW                              # windowless Python: no black window
-            $lnk.Arguments        = "`"$(Join-Path $Root 'launcher.py')`" --app"
-            $lnk.WorkingDirectory = $Root
-            $lnk.IconLocation     = (Join-Path $Root 'app\favicon.ico')
-            $lnk.Description      = 'Open NIFTYBEES Algo (starts the trading backend in the background)'
-            $lnk.Save()
-            Write-Host "  $dir\$AppName.lnk"
+        $dirs = if ($ShortcutDir) { @($ShortcutDir) } else { @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs')) }
+        $made = 0
+        foreach ($dir in $dirs) {
+            $lnkPath = Join-Path $dir "$AppName.lnk"
+            if (New-AppShortcut $lnkPath) { Write-Host "  $lnkPath"; $made++ }
+            else { Write-Host "  Could not create $lnkPath" -ForegroundColor Yellow }
+        }
+        if ($made -lt $dirs.Count) {
+            Write-Host "  You can always open the app with 'Open NIFTYBEES Algo.cmd' in this folder" -ForegroundColor Yellow
+            Write-Host "  (right-click it > Send to > Desktop to make your own shortcut)." -ForegroundColor Yellow
         }
     }
 
