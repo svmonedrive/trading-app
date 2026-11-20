@@ -10,6 +10,9 @@
   </div>
 
   <div class="controls">
+    <button class="btn ghost sm" type="button" (click)="openSetup()" title="API keys, start backend, first-time steps">⚙ Setup</button>
+    <button class="btn ghost sm" type="button" (click)="quit()" [disabled]="busy() === 'quit'"
+            title="Stop the trading backend and close NIFTYBEES Algo">⏻ Quit</button>
     @if (auth(); as a) {
       @if (a.active) {
         <span class="badge green" [title]="'Logged in ' + (a.login_time | date: 'medium')">

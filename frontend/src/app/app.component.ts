@@ -6,6 +6,7 @@ import { ActivityLogComponent } from './activity-log/activity-log.component';
 import { AppHeaderComponent } from './app-header/app-header.component';
 import { AppNotificationComponent } from './app-notification/app-notification.component';
 import { BackendLauncherComponent } from './backend-launcher/backend-launcher.component';
+import { LauncherService } from './launcher.service';
 import { LiveStrategyComponent } from './live-strategy/live-strategy.component';
 import { NotificationService } from './notification.service';
 import { OrderListComponent } from './order-list/order-list.component';
@@ -23,6 +24,8 @@ const POLL_MS = 5000;
 export class AppComponent {
   private readonly api = inject(TradingService);
   private readonly notifier = inject(NotificationService);
+  /** Quit clicked -> show the "stopped" screen instead of the dashboard. */
+  readonly stopped = inject(LauncherService).stopped;
   private readonly refresh$ = new Subject<void>();
 
   readonly data = signal<Dashboard | null>(null);

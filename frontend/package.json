@@ -6,7 +6,8 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "package": "node scripts/package.mjs"
   },
   "private": true,
   "packageManager": "npm@10.9.8",

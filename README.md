@@ -129,7 +129,34 @@ API: `GET /api/strategy/presets`, `GET /api/strategy/config`, `PUT /api/strategy
 
 To add a strategy in code, subclass `Preset` in `backend/src/app/strategy/presets.py` (declare its `fields`, implement `evaluate`) and add it to `PRESETS`. The UI form is generated from `fields`, so no frontend change is needed.
 
-## 6. PWA
+## 6. Sharing the app with others
+```powershell
+cd C:\NON_ESCRIBA\NIFTY_BEES_TRADING_APP\frontend
+npm run package
+```
+This builds the UI and creates `frontend\release\NIFTYBEES-Algo\` and `frontend\release\NIFTYBEES-Algo.zip`. Both are git-ignored.
+
+- **What's in the zip:**
+  - `app\` (the built UI)
+  - `backend\` (code, `requirements.txt`, `.env.example`, `CONFIG.md`)
+  - `launcher.py`, `setup.bat` / `setup.ps1`, `uninstall.bat` / `uninstall.ps1`
+  - `GETTING_STARTED.md`, `VERSION.txt`
+- **Safety check:** packaging stops if `.env`, `data\`, a database, a Zerodha token, `.venv` or real keys would end up in the zip. The example `.env` must also keep `DRY_RUN=true`.
+- **What the receiver does:**
+  1. Unzip.
+  2. Run `setup.bat` once (needs internet).
+     - It downloads portable Python 3.12 from python.org into the folder, with no admin rights and nothing installed system-wide.
+     - It installs the packages from PyPI and creates `backend\.env`.
+     - It creates a **NIFTYBEES Algo** shortcut (Desktop and Start menu) and opens the app.
+  3. Every day: open the **NIFTYBEES Algo** shortcut.
+     - It runs `pythonw launcher.py --app`. The launcher and the backend run hidden, the backend starts by itself, and the app opens in its own window.
+     - Closing the window leaves the bot running; **⏻ Quit** in the app stops everything.
+  4. On first start, the app's setup dialog asks for **their own** Kite API key and secret, then starts the backend. The header's **⚙ Setup** button reopens it later.
+  5. Logs are written to `logs\launcher.log` and `logs\backend.log`.
+  6. To remove it, run `uninstall.bat`. It stops the app, offers a backup of `backend\data` and `.env` to Documents, removes the shortcuts, and offers to delete the folder.
+- **Templates:** the files the receiver gets live in `packaging\`. `launcher.py` is shared with development. In the repo, `start.bat` runs it in dev mode, with console windows and `backend\.venv`.
+
+## 7. PWA
 `ng add @angular/pwa` has been applied. The service worker only runs in a production build:
 ```powershell
 npx ng build; npx http-server dist/frontend/browser -p 4200

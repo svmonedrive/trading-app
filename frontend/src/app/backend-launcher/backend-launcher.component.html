@@ -1,43 +1,123 @@
 <!-- Native modal dialog: while open, the rest of the page is inert (no clicks, no keyboard focus). -->
-<dialog #dlg class="launcher" aria-labelledby="launcher-title" aria-describedby="launcher-text"
-        (cancel)="$event.preventDefault()">
-  <div class="icon" aria-hidden="true" [class.busy]="phase() === 'starting'">
-    @if (phase() === 'starting') { <span class="spinner"></span> } @else { ⏻ }
-  </div>
-
-  <h2 id="launcher-title">
-    @switch (phase()) {
-      @case ('starting') { Starting backend server… }
-      @case ('failed') { Backend did not start }
-      @case ('no-launcher') { Start the backend manually }
-      @default { Backend server is not running }
-    }
-  </h2>
-
-  <div id="launcher-text" class="text">
-    @switch (phase()) {
-      @case ('starting') {
-        <p>{{ message() ?? 'Opening the backend…' }}</p>
-        <p class="muted small">A "NIFTYBEES Backend" window opens on your desktop. This usually takes about 5 seconds.</p>
-      }
-      @case ('failed') {
-        <p>{{ message() }}</p>
-      }
-      @case ('no-launcher') {
-        <p>This page isn't served by the launcher, so it can't start the backend for you.</p>
-        <p>Close this tab and double-click <span class="mono">start.bat</span>, or run in <span class="mono">backend\</span>:</p>
-        <code class="mono">.\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir src --host 127.0.0.1 --port 8000</code>
-      }
-      @default {
-        <p>The dashboard needs the backend at <span class="mono">http://localhost:8000</span> for trading, IP monitoring and market data.</p>
-      }
+<dialog #dlg class="launcher" aria-labelledby="launcher-title" (cancel)="onCancel($event)">
+  <div class="head">
+    <h2 id="launcher-title">{{ backendDown() ? 'Set up & start NIFTYBEES Algo' : 'Setup' }}</h2>
+    @if (!backendDown()) {
+      <button class="x" type="button" (click)="close()" aria-label="Close">✕</button>
     }
   </div>
 
-  @if (phase() !== 'starting' && phase() !== 'no-launcher') {
-    <button class="btn primary big" (click)="start()" autofocus>
-      {{ phase() === 'failed' ? 'Try again' : 'Start Backend Server' }}
-    </button>
+  @if (noLauncher()) {
+    <div class="note warn">
+      <p><strong>NIFTYBEES Algo isn't running</strong>, so this page can't set things up or start the backend.</p>
+      <p>Close this window and open the app with its <strong>NIFTYBEES Algo</strong> shortcut (Desktop or Start menu).
+        In the source repo use <span class="mono">start.bat</span>, or start the backend by hand in
+        <span class="mono">backend\</span>:</p>
+      <code class="mono">.\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir src --host 127.0.0.1 --port 8000</code>
+    </div>
+  } @else if (setup(); as st) {
+    @if (!st.python_ok) {
+      <div class="note warn">
+        <strong>Python isn't set up yet.</strong> Close this, double-click <span class="mono">setup.bat</span> in the app
+        folder, then start the app again.
+      </div>
+    }
+
+    <ol class="steps">
+      <!-- 1. Kite app -->
+      <li [class.done]="keysDone() && !editingKeys()">
+        <div class="step-head"><span class="num">1</span> Create your Kite Connect app <span class="tick">✓</span></div>
+        @if (showKeyForm()) {
+          <ol class="how">
+            <li>Open <a [href]="kiteAppsUrl" target="_blank" rel="noopener">developers.kite.trade</a>, log in and click
+              <strong>Create new app</strong> (type <strong>Personal</strong>).</li>
+            <li>Set <strong>Redirect URL</strong> to
+              <span class="copy-row"><code class="mono">{{ st.redirect_url }}</code>
+                <button class="btn sm" type="button" (click)="copyRedirect(st.redirect_url)">{{ copied() ? 'Copied ✓' : 'Copy' }}</button>
+              </span>
+            </li>
+            <li>Leave <strong>Postback URL</strong> empty and save. The app page now shows your <strong>API key</strong> and
+              <strong>API secret</strong>.</li>
+          </ol>
+        }
+      </li>
+
+      <!-- 2. keys -->
+      <li [class.done]="keysDone() && !editingKeys()">
+        <div class="step-head"><span class="num">2</span> Save the app's API key &amp; secret <span class="tick">✓</span></div>
+        @if (showKeyForm()) {
+          <form class="keys" (submit)="$event.preventDefault(); saveKeys()">
+            <label>API key
+              <input class="mono" autocomplete="off" spellcheck="false" required
+                     [value]="apiKey()" (input)="apiKey.set($any($event.target).value)" />
+            </label>
+            <label>API secret
+              <input class="mono" type="password" autocomplete="off" spellcheck="false" required
+                     [value]="apiSecret()" (input)="apiSecret.set($any($event.target).value)" />
+            </label>
+            <div class="row">
+              <button class="btn primary" type="submit" [disabled]="savingKeys() || !apiKey() || !apiSecret()">
+                {{ savingKeys() ? 'Saving…' : 'Save keys' }}
+              </button>
+              @if (editingKeys()) {
+                <button class="btn" type="button" (click)="editingKeys.set(false)">Cancel</button>
+              }
+            </div>
+            <p class="muted small">Saved only on this computer, in <span class="mono">backend\.env</span>. Never share them.</p>
+          </form>
+        } @else {
+          <p class="done-line">Saved (key <span class="mono">{{ st.api_key_hint ?? '••••' }}</span>) ·
+            <button class="link" type="button" (click)="editingKeys.set(true)">Change keys</button>
+          </p>
+        }
+        @if (keysMsg(); as m) {
+          <p class="small" [class.ok-text]="m.ok" [class.error-text]="!m.ok">{{ m.text }}</p>
+        }
+      </li>
+
+      <!-- 3. backend -->
+      <li [class.done]="!backendDown()">
+        <div class="step-head"><span class="num">3</span> Start the backend server <span class="tick">✓</span></div>
+        @if (!backendDown()) {
+          <p class="done-line">Running.</p>
+        } @else {
+          @switch (phase()) {
+            @case ('starting') {
+              <p class="starting"><span class="spinner" aria-hidden="true"></span> {{ message() ?? 'Starting…' }}
+                <span class="muted small">
+                  {{ st.app_mode ? 'It runs in the background — usually ready in about 5 seconds.'
+                                 : 'A "NIFTYBEES Backend" window opens — keep it open.' }}
+                </span></p>
+            }
+            @default {
+              @if (phase() === 'failed') {
+                <p class="error-text">{{ message() }}</p>
+                @if (logTail().length) { <pre class="log mono">{{ logText() }}</pre> }
+              }
+              <button class="btn primary big" type="button" (click)="start()"
+                      [disabled]="!keysDone() || !st.python_ok" autofocus>
+                {{ phase() === 'failed' ? 'Try again' : 'Start Backend Server' }}
+              </button>
+              @if (!keysDone()) { <p class="muted small">Save the API key &amp; secret first.</p> }
+            }
+          }
+        }
+      </li>
+
+      <!-- 4. what's next -->
+      <li class="next">
+        <div class="step-head"><span class="num">4</span> Then, in the app</div>
+        <ul>
+          <li><strong>Login to Zerodha</strong> (top right) — needed every morning.</li>
+          <li>If the <strong>Public IP</strong> bar is red: <strong>Fix</strong> → whitelist the IP in your Kite app.</li>
+          <li>Pick a strategy, then switch <strong>Algo</strong> on.
+            Mode: <span class="pill" [class.blue]="st.mode === 'PAPER'" [class.red]="st.mode === 'LIVE'">{{ st.mode }}</span>
+            @if (st.mode === 'PAPER') { <span class="muted small">(orders are simulated)</span> }
+          </li>
+        </ul>
+      </li>
+    </ol>
+  } @else {
+    <p class="muted loading">Checking setup…</p>
   }
-  <p class="muted small retry">Checking again every 5 s — this closes by itself once the backend is reachable.</p>
 </dialog>

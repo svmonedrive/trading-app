@@ -30,9 +30,15 @@ def _env_bool(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_secret(name: str) -> str:
+    """Value from .env, or "" if it is still the .env.example placeholder (e.g. "your_api_key")."""
+    value = os.getenv(name, "").strip()
+    return "" if value.lower().startswith("your_") else value
+
+
 class Settings:
-    kite_api_key: str = os.getenv("KITE_API_KEY", "").strip()
-    kite_api_secret: str = os.getenv("KITE_API_SECRET", "").strip()
+    kite_api_key: str = _env_secret("KITE_API_KEY")
+    kite_api_secret: str = _env_secret("KITE_API_SECRET")
     dry_run: bool = _env_bool("DRY_RUN", True)
     # Paper mode only: allow simulated orders outside 09:15-15:30 so the flow can be tested on weekends.
     paper_ignore_market_hours: bool = _env_bool("PAPER_IGNORE_MARKET_HOURS", False)

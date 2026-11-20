@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, input, output, signal } from '@angular/core';
 import { Observable } from 'rxjs';
 
+import { LauncherService } from '../launcher.service';
 import { NotificationService } from '../notification.service';
 import { AlgoStatus, AuthStatus, TradingService } from '../trading.service';
 
@@ -23,7 +24,32 @@ export class AppHeaderComponent {
   /** Algo toggled - parent should re-poll now. */
   readonly changed = output<void>();
 
-  readonly busy = signal<'login' | 'toggle' | null>(null);
+  readonly busy = signal<'login' | 'toggle' | 'quit' | null>(null);
+  private readonly launcher = inject(LauncherService);
+
+  openSetup(): void {
+    this.launcher.openSetup();
+  }
+
+  /** Stop backend + launcher. Closing the window alone keeps the bot running in the background. */
+  quit(): void {
+    const active = this.algo()?.algo_active;
+    const msg = active
+      ? 'Quit NIFTYBEES Algo?\n\nThe Algo is RUNNING - quitting stops it, so no orders will be placed until you open the app again.'
+      : 'Quit NIFTYBEES Algo?\n\nThis stops the backend. Open the app again from its shortcut.';
+    if (!confirm(msg)) return;
+    this.busy.set('quit');
+    this.launcher.quit().subscribe({
+      next: () => {
+        this.busy.set(null);
+        this.launcher.stopped.set(true);
+      },
+      error: () => {
+        this.busy.set(null);
+        this.notifier.show({ kind: 'err', text: "Quit only works when the app was opened from its shortcut (or start.bat)." });
+      },
+    });
+  }
 
   login(): void {
     this.run('login', this.api.loginUrl(), (r) => (window.location.href = r.login_url));

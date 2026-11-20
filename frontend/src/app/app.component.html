@@ -1,5 +1,16 @@
 <app-backend-launcher [backendDown]="backendDown()" (started)="refresh()" />
 
+@if (stopped()) {
+  <div class="stopped" role="alert">
+    <div class="stopped-card">
+      <div class="stopped-icon" aria-hidden="true">⏻</div>
+      <h2>NIFTYBEES Algo has stopped</h2>
+      <p>The trading backend is off — no orders will be placed.</p>
+      <p class="muted">You can close this window. Open the app again from its <strong>NIFTYBEES Algo</strong> shortcut.</p>
+    </div>
+  </div>
+}
+
 <app-header [auth]="auth()" [algo]="algo()" [lastUpdated]="lastUpdated()" (changed)="refresh()" />
 
 <app-notification [ip]="ip()" [algo]="algo()" (changed)="refresh()" />
