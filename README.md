@@ -2,8 +2,8 @@
 
 **[Download NIFTYBEES-Algo.zip](https://github.com/svmonedrive/trading-app/raw/refs/heads/downloads/NIFTYBEES-Algo.zip)** (0.2 MB)
 
-- Built: 2026-11-20 18:44 UTC
-- From commit: `c7d2cf6`
+- Built: 2026-11-20 18:55 UTC
+- From commit: `8de7ea5`
 
 ## Install (Windows 10/11, 64-bit)
 1. Unzip into a folder you keep, e.g. `Documents\NIFTYBEES-Algo`.
