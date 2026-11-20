@@ -1,0 +1,13 @@
+:host { display: block; min-width: 0; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.msg { white-space: normal; min-width: 220px; color: var(--muted); }
+td.msg.reject { color: var(--red); font-weight: 600; }
+td.empty { text-align: center; color: var(--muted); padding: 24px; }
+.side { font-weight: 800; }
+.side.buy { color: var(--green); }
+.side.sell { color: var(--red); }

@@ -1,0 +1,153 @@
+@let s = status();
+@if (visible()) {
+  <section class="ipbar" [class.ok]="s.is_matched" [class.bad]="!s.is_matched" [class.open]="isOpen()"
+           [attr.role]="s.is_matched ? null : 'alert'">
+    <!-- ============ one-liner ============ -->
+    <div class="line">
+      <button class="summary" (click)="toggle()" [attr.aria-expanded]="isOpen()">
+        <span class="caret" aria-hidden="true">▸</span>
+        @if (s.is_matched) {
+          <span><strong>✔ Public IP verified</strong> · <span class="mono">{{ s.current_ip }}</span>
+            <span class="dim"> · checked {{ s.last_checked | date: 'HH:mm:ss' }}</span></span>
+        } @else {
+          <span>
+            <strong>⚠ {{ headline() }}
+              @if (s.zerodha_rejection; as rj) { at {{ rj.at | date: 'HH:mm:ss' }} }
+              @else if (s.changed_at && s.whitelisted_ip && s.current_ip !== s.whitelisted_ip) { at {{ s.changed_at | date: 'HH:mm:ss' }} }
+            </strong>
+            @if (s.whitelisted_ip && s.current_ip && s.current_ip !== s.whitelisted_ip) {
+              · <span class="mono">{{ s.whitelisted_ip }}</span> → <span class="mono">{{ s.current_ip }}</span>
+            }
+            <span class="dim"> · orders paused</span>
+          </span>
+        }
+      </button>
+      @if (!s.is_matched && s.current_ip && !isOpen()) {
+        <button class="btn danger sm" (click)="expanded.set(true)">Fix</button>
+      }
+      @if (s.is_matched) {
+        <button class="close" (click)="dismiss()" title="Dismiss (comes back if the IP status changes)" aria-label="Dismiss">✕</button>
+      }
+    </div>
+
+    <!-- ============ expanded: full monitor ============ -->
+    <!-- always rendered so it can animate; grid 0fr <-> 1fr slides it open/closed -->
+    <div class="collapse" [attr.inert]="isOpen() ? null : ''" [attr.aria-hidden]="!isOpen()">
+      <div class="body">
+        <div class="body-head">
+          <h2>Public IP Monitor</h2>
+          <button class="btn ghost sm" (click)="checkNow()" [disabled]="busy() === 'ipcheck'">
+            {{ busy() === 'ipcheck' ? 'Checking…' : 'Re-check' }}
+          </button>
+        </div>
+
+        @if (s.zerodha_rejection; as rj) {
+          <div class="rejection">
+            ⛔ Zerodha rejected order {{ rj.order_ref }} from <span class="mono">{{ rj.ip }}</span>
+            at {{ rj.at | date: 'dd MMM HH:mm:ss' }}: <em>“{{ rj.message }}”</em>
+          </div>
+        }
+
+        <div class="ip-chips">
+          <div class="ip-chip" [class.ok]="s.is_matched" [class.bad]="!!s.whitelisted_ip && !s.is_matched">
+            <span class="chip-label">Whitelisted IP @if (s.whitelisted_version) { · IPv{{ s.whitelisted_version }} }</span>
+            <span class="chip-ip mono">{{ s.whitelisted_ip ?? 'not set' }}</span>
+            <span class="chip-sub">
+              @if (!s.whitelisted_ip) { not confirmed yet }
+              @else if (s.whitelisted_at) { saved {{ s.whitelisted_at | date: 'dd MMM, HH:mm:ss' }} }
+              @else { saved earlier }
+              @if (s.whitelisted_ip && !s.is_matched) { · not matching }
+            </span>
+          </div>
+          <div class="ip-chip" [class.ok]="s.is_matched" [class.bad]="!s.is_matched" [class.flash]="newChange()">
+            <span class="chip-label">Current IP @if (s.ip_version) { · IPv{{ s.ip_version }} }</span>
+            <span class="chip-ip mono">{{ s.current_ip ?? 'unavailable' }}</span>
+            <span class="chip-sub">checked {{ s.last_checked ? (s.last_checked | date: 'HH:mm:ss') : '—' }} · every {{ s.check_interval_seconds }}s</span>
+          </div>
+          <div class="ip-chip previous">
+            <span class="chip-label">Previous IP</span>
+            <span class="chip-ip mono">{{ s.previous_ip ?? '—' }}</span>
+            <span class="chip-sub">{{ s.changed_at ? 'changed ' + (s.changed_at | date: 'dd MMM, HH:mm:ss') : 'no change recorded yet' }}</span>
+          </div>
+        </div>
+
+        @if (s.error) { <p class="error-text">{{ s.error }}</p> }
+
+        <!-- whitelist flow -->
+        @if (consolePromptIp(); as askIp) {
+          <div class="console-prompt" role="alertdialog">
+            <p>Did you save <span class="mono">{{ askIp }}</span> in your app's IP whitelist on Zerodha?</p>
+            <div class="row">
+              <button class="btn primary" (click)="answerConsolePrompt(true)" [disabled]="busy() === 'confirm'">Yes, saved it</button>
+              <button class="btn" (click)="answerConsolePrompt(false)">Not yet</button>
+            </div>
+          </div>
+        } @else if (!s.is_matched && s.current_ip) {
+          <div class="whitelist-flow">
+            @if (consoleOpen()) {
+              <p class="console-waiting">
+                <span class="spinner"></span>
+                Zerodha console is open in a popup. IP <span class="mono">{{ s.current_ip }}</span> is on your clipboard —
+                paste it into <strong>IP whitelist</strong>, save, then close the popup.
+              </p>
+              <button class="btn sm" (click)="consoleDone()">I'm done (keep popup open)</button>
+            } @else {
+              <button class="btn danger big" (click)="copyAndOpenZerodha()">
+                {{ copied() ? 'Copied ✓ — opening Zerodha…' : 'Copy IP & Open Zerodha' }}
+              </button>
+              <p class="muted small">
+                Copies <span class="mono">{{ s.current_ip }}</span>, opens developers.kite.trade in a popup, and asks you to
+                confirm when you close it.
+              </p>
+            }
+            <p class="muted small fallback">
+              Manual:
+              <button class="link" (click)="copyIp()">copy IP</button> ·
+              <a [href]="zerodhaAppsUrl" target="_blank" rel="noopener">open console in a tab</a> ·
+              <button class="link" (click)="confirmIp()" [disabled]="busy() === 'confirm'">I have updated Zerodha</button>
+            </p>
+          </div>
+        }
+
+        <div class="meta">
+          <span>IP type:
+            @if (s.sharing; as sh) {
+              @switch (sh.status) {
+                @case ('DEDICATED') { <span class="pill green">Dedicated{{ sh.confidence === 'likely' ? ' (likely)' : '' }}</span> }
+                @case ('SHARED') { <span class="pill amber">Shared / CGNAT{{ sh.confidence === 'likely' ? ' (likely)' : '' }}</span> }
+                @default { <span class="pill grey">Unknown</span> }
+              }
+            } @else {
+              <span class="muted">checking…</span>
+            }
+          </span>
+        </div>
+
+        @if (s.sharing; as sh) {
+          <p class="sharing-note" [class.warn]="sh.status === 'SHARED'">
+            {{ sh.detail }}
+            @if (sh.status === 'SHARED') {
+              <br />Other ISP customers may use this same IP, and it can change at any time, not only on router reboot.
+              Zerodha may refuse an IP another client has already registered.
+            }
+            <span class="muted small"> · via {{ sh.method }}, {{ sh.checked_at | date: 'HH:mm' }}</span>
+          </p>
+        }
+
+        @if (s.ip_changes.length) {
+          <details class="ip-history">
+            <summary>Recent IP changes ({{ s.ip_changes.length }})</summary>
+            <ul>
+              @for (c of s.ip_changes; track c.at) {
+                <li>
+                  <time>{{ c.at | date: 'dd MMM HH:mm:ss' }}</time>
+                  <span class="mono">{{ c.from_ip }}</span> → <span class="mono">{{ c.to_ip }}</span>
+                </li>
+              }
+            </ul>
+          </details>
+        }
+      </div>
+    </div>
+  </section>
+}

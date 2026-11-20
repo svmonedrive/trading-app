@@ -1,0 +1,29 @@
+<section class="card" [class.open]="expanded()">
+  <div class="card-head">
+    <button class="head-toggle" (click)="toggle()" [attr.aria-expanded]="expanded()" aria-controls="activity-log-body">
+      <span class="caret" aria-hidden="true">▸</span>
+      <h2>Activity Log</h2>
+      <span class="count">{{ events().length }}</span>
+    </button>
+    <button class="btn ghost sm" (click)="toggle()" [attr.aria-expanded]="expanded()" aria-controls="activity-log-body">
+      {{ expanded() ? 'Collapse' : 'Expand' }}
+    </button>
+  </div>
+
+  <!-- grid 0fr <-> 1fr animates to the list's natural height (no fixed height, no inner scroll) -->
+  <div class="collapse" id="activity-log-body" [attr.inert]="expanded() ? null : ''">
+    <div class="inner">
+      <ul class="log">
+        @for (e of events(); track $index) {
+          <li [class]="'lvl-' + e.level.toLowerCase()">
+            <time>{{ e.timestamp | date: 'dd MMM HH:mm:ss' }}</time>
+            <b>{{ e.level }}</b>
+            <span>{{ e.message }}</span>
+          </li>
+        } @empty {
+          <li class="muted">No activity yet.</li>
+        }
+      </ul>
+    </div>
+  </div>
+</section>

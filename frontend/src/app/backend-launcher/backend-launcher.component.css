@@ -1,0 +1,40 @@
+:host { display: contents; }
+
+.launcher {
+  width: min(460px, calc(100vw - 32px)); padding: 28px 28px 20px; border: 1px solid var(--border); border-radius: 16px;
+  background: var(--surface); color: var(--text); text-align: center;
+  box-shadow: 0 24px 64px rgba(0,0,0,.28);
+}
+.launcher[open] { animation: pop .25s ease-out; }
+.launcher::backdrop {
+  background: rgba(15, 20, 28, .55); backdrop-filter: blur(3px);
+  animation: fade .25s ease-out;
+}
+@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+@keyframes fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .launcher[open], .launcher::backdrop { animation: none; }
+}
+
+.icon {
+  width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 1.6rem; background: var(--red-bg); color: var(--red);
+}
+.icon.busy { background: var(--blue-bg); }
+h2 { margin: 0 0 8px; font-size: 1.15rem; }
+.text { font-size: .9rem; }
+.text p { margin: 0 0 8px; }
+.text p .mono { white-space: nowrap; }
+code {
+  display: block; margin: 6px 0 4px; padding: 8px 10px; border-radius: 8px; text-align: left;
+  background: var(--surface-2); font-size: .8rem; overflow-wrap: anywhere;
+}
+.btn.big { margin-top: 10px; min-width: 220px; }
+.retry { margin: 16px 0 0; }
+
+.spinner {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 3px solid var(--blue-bg); border-top-color: var(--accent); border-right-color: var(--accent);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -1,0 +1,43 @@
+<!-- Native modal dialog: while open, the rest of the page is inert (no clicks, no keyboard focus). -->
+<dialog #dlg class="launcher" aria-labelledby="launcher-title" aria-describedby="launcher-text"
+        (cancel)="$event.preventDefault()">
+  <div class="icon" aria-hidden="true" [class.busy]="phase() === 'starting'">
+    @if (phase() === 'starting') { <span class="spinner"></span> } @else { ⏻ }
+  </div>
+
+  <h2 id="launcher-title">
+    @switch (phase()) {
+      @case ('starting') { Starting backend server… }
+      @case ('failed') { Backend did not start }
+      @case ('no-launcher') { Start the backend manually }
+      @default { Backend server is not running }
+    }
+  </h2>
+
+  <div id="launcher-text" class="text">
+    @switch (phase()) {
+      @case ('starting') {
+        <p>{{ message() ?? 'Opening the backend…' }}</p>
+        <p class="muted small">A "NIFTYBEES Backend" window opens on your desktop. This usually takes about 5 seconds.</p>
+      }
+      @case ('failed') {
+        <p>{{ message() }}</p>
+      }
+      @case ('no-launcher') {
+        <p>This page isn't served by the launcher, so it can't start the backend for you.</p>
+        <p>Close this tab and double-click <span class="mono">start.bat</span>, or run in <span class="mono">backend\</span>:</p>
+        <code class="mono">.\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000</code>
+      }
+      @default {
+        <p>The dashboard needs the backend at <span class="mono">http://localhost:8000</span> for trading, IP monitoring and market data.</p>
+      }
+    }
+  </div>
+
+  @if (phase() !== 'starting' && phase() !== 'no-launcher') {
+    <button class="btn primary big" (click)="start()" autofocus>
+      {{ phase() === 'failed' ? 'Try again' : 'Start Backend Server' }}
+    </button>
+  }
+  <p class="muted small retry">Checking again every 5 s — this closes by itself once the backend is reachable.</p>
+</dialog>

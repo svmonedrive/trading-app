@@ -1,0 +1,71 @@
+:host { display: block; min-width: 0; }
+
+.card-head { align-items: flex-start; }
+.title { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.subtitle { font-size: .82rem; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 600; }
+
+/* ---------- stats ---------- */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.stat { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stat .label { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.stat .value { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat .value .of { font-size: .8rem; font-weight: 600; color: var(--muted); }
+.stat .sub { font-size: .72rem; color: var(--muted); }
+.gauge { position: relative; height: 6px; border-radius: 3px; margin: 6px 0 2px; }
+.gauge i { position: absolute; top: -3px; width: 4px; height: 12px; margin-left: -2px; background: var(--text); border-radius: 2px; }
+
+/* ---------- signal / rules ---------- */
+.signal-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: .88rem; }
+.signal { padding: 4px 12px; border-radius: 8px; font-weight: 800; font-size: .8rem; flex: none; }
+.signal.buy { background: var(--green); color: #fff; }
+.signal.sell { background: var(--red); color: #fff; }
+.signal.hold { background: var(--surface-2); color: var(--muted); }
+.rules { margin-top: 10px; font-size: .85rem; }
+.rules ul { margin: 4px 0 0; padding-left: 20px; display: grid; gap: 2px; }
+.next { font-size: .85rem; margin: 10px 0 0; }
+.action { font-size: .8rem; margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); }
+
+/* ---------- strategy list ---------- */
+.strategies { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); display: grid; gap: 10px; }
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.list-head h3 { margin: 0; font-size: .95rem; }
+
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.list li { border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); overflow: hidden;
+           transition: border-color .2s, background-color .2s; }
+.list li.selected { border-color: var(--green-bd); background: var(--green-bg); }
+.list li.open { border-color: var(--accent); }
+.list li.selected.open { border-color: var(--green); }
+.list li.orders { margin-top: 6px; }
+
+.row {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; text-align: left;
+  font: inherit; color: inherit; background: none; border: 0; cursor: pointer;
+}
+.row:hover { background: rgba(0,0,0,.03); }
+.dot {
+  flex: none; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--muted);
+  display: grid; place-items: center;
+}
+.selected .dot { border-color: var(--green); }
+.selected .dot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+.dot.gear { border: 0; color: var(--muted); font-size: 1rem; }
+.row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.name { font-weight: 600; font-size: .9rem; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.selected .name { color: var(--green); }
+.limits { font-size: .75rem; color: var(--muted); overflow-wrap: anywhere; }
+.caret { flex: none; color: var(--muted); transition: transform .3s ease; }
+.open .caret { transform: rotate(90deg); }
+
+/* animated expand: grid row 0fr <-> 1fr */
+.collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ease; }
+.open .collapse { grid-template-rows: 1fr; }
+.inner {
+  min-height: 0; overflow: hidden; padding: 0 12px 0 40px;
+  opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .3s;
+}
+.open .inner { opacity: 1; visibility: visible; transition: opacity .25s ease .05s, visibility 0s; }
+.inner::after { content: ''; display: block; height: 12px; }
+.desc { margin: 0 0 10px; font-size: .8rem; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .collapse, .inner, .caret, .list li { transition: none !important; } }
+@media (max-width: 600px) { .inner { padding-left: 12px; } }

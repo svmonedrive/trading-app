@@ -1,0 +1,15 @@
+<!-- (close) fires for the Close button, the ✕ and the Esc key, so the parent always learns it closed. -->
+<dialog #dlg class="dlg" aria-labelledby="add-strategy-title" (close)="closed.emit()">
+  <div class="head">
+    <h2 id="add-strategy-title">Add new strategy</h2>
+    <button class="x" type="button" (click)="close()" aria-label="Close">✕</button>
+  </div>
+
+  <div class="body">
+    <p class="muted">The new-strategy builder will go here.</p>
+  </div>
+
+  <div class="foot">
+    <button class="btn" type="button" (click)="close()">Close</button>
+  </div>
+</dialog>

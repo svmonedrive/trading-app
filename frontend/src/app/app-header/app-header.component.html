@@ -1,0 +1,38 @@
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">NB</span>
+    <div>
+      <h1>NIFTYBEES Algo</h1>
+      <small>
+        @if (lastUpdated(); as t) { Updated {{ t | date: 'HH:mm:ss' }} } @else { Connecting… }
+      </small>
+    </div>
+  </div>
+
+  <div class="controls">
+    @if (auth(); as a) {
+      @if (a.active) {
+        <span class="badge green" [title]="'Logged in ' + (a.login_time | date: 'medium')">
+          ● Zerodha Connected{{ a.user_id ? ' · ' + a.user_id : '' }}
+        </span>
+      } @else {
+        <span class="badge orange">● Login Required</span>
+        <button class="btn primary" (click)="login()" [disabled]="busy() === 'login' || !a.api_configured"
+                [title]="a.api_configured ? '' : 'Set KITE_API_KEY / KITE_API_SECRET in backend/.env'">
+          Login to Zerodha
+        </button>
+      }
+    }
+
+    @if (algo(); as al) {
+      <span class="badge" [class.live]="al.mode === 'LIVE'" [class.paper]="al.mode === 'PAPER'">
+        {{ al.mode === 'LIVE' ? 'LIVE MODE' : 'PAPER MODE' }}
+      </span>
+      <button class="switch" role="switch" [attr.aria-checked]="al.algo_active" (click)="toggleAlgo()"
+              [class.on]="al.algo_active" [disabled]="busy() === 'toggle'">
+        <span class="knob"></span>
+        <span class="switch-label">{{ al.algo_active ? 'Algo RUNNING' : 'Algo PAUSED' }}</span>
+      </button>
+    }
+  </div>
+</header>

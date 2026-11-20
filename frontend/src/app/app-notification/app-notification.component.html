@@ -1,0 +1,18 @@
+@if (ip(); as i) {
+  <app-public-ip-monitor [status]="i" (changed)="changed.emit()" />
+}
+
+@if (algo(); as al) {
+  @if (al.can_trade) {
+    <div class="banner green">All safety gates passed — the bot may place {{ al.mode }} orders when a signal fires.</div>
+  } @else {
+    <div class="banner amber">
+      <strong>Orders blocked:</strong>
+      @for (r of al.block_reasons; track r) { <span class="reason">{{ r }}</span> }
+    </div>
+  }
+}
+
+@if (notifier.toast(); as t) {
+  <div class="toast" [class.err]="t.kind === 'err'" role="status" (click)="notifier.dismiss()">{{ t.text }}</div>
+}

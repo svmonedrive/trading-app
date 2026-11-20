@@ -1,0 +1,14 @@
+<app-backend-launcher [backendDown]="backendDown()" (started)="refresh()" />
+
+<app-header [auth]="auth()" [algo]="algo()" [lastUpdated]="lastUpdated()" (changed)="refresh()" />
+
+<app-notification [ip]="ip()" [algo]="algo()" (changed)="refresh()" />
+
+<main class="grid">
+  <app-order-list [orders]="orders()" />
+
+  <app-live-strategy [snapshot]="strat()" [config]="strategyConfig()"
+    [intervalSeconds]="algo()?.strategy_interval_seconds" [liveMode]="algo()?.mode === 'LIVE'" (changed)="refresh()" />
+
+  <app-activity-log [events]="events()" />
+</main>

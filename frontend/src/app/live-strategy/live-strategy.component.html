@@ -1,0 +1,137 @@
+<section class="card">
+  <div class="card-head">
+    <div class="title">
+      <h2>NIFTYBEES Live Strategy</h2>
+      @if (config()) {
+        <span class="subtitle"><span class="pill green">Selected</span> {{ activeName() }}</span>
+      }
+    </div>
+    <button class="btn sm" (click)="runCheckNow()" [disabled]="running()">
+      {{ running() ? 'Checking…' : 'Run Check Now' }}
+    </button>
+  </div>
+
+  @if (snapshot(); as s) {
+    @if (s.status === 'not_run_yet') {
+      <p class="muted">First check runs a few seconds after the backend starts…</p>
+    } @else {
+      @if (s.status === 'error') { <p class="error-text">Last check failed: {{ s.error }}</p> }
+
+      <div class="stats">
+        <div class="stat">
+          <span class="label">Price</span>
+          <span class="value">₹{{ s.price | number: '1.2-2' }}</span>
+          <span class="sub">{{ s.price_time | date: 'dd MMM HH:mm' }} · {{ s.data_age_minutes }} min old</span>
+        </div>
+
+        @for (i of tiles(s); track i.label) {
+          <div class="stat">
+            <span class="label">{{ i.label }}</span>
+            <span class="value">{{ i.unit === '₹' && i.value != null ? '₹' : '' }}{{ i.value != null ? (i.value | number: '1.2-2') : '—' }}</span>
+            @if (gauge(i); as g) {
+              <div class="gauge"
+                   [style.background]="'linear-gradient(90deg, var(--green) 0 ' + g.low + '%, var(--border) ' + g.low + '% ' + g.high + '%, var(--red) ' + g.high + '% 100%)'">
+                <i [style.left.%]="g.pos"></i>
+              </div>
+            }
+            @if (i.note) { <span class="sub">{{ i.note }}</span> }
+          </div>
+        }
+
+        <div class="stat">
+          <span class="label">Algo holding</span>
+          <span class="value">{{ s.algo_qty ?? 0 }}<small class="of"> / {{ s.max_holding_qty ?? '—' }}</small></span>
+          <span class="sub">
+            @if (s.avg_price) { avg ₹{{ s.avg_price | number: '1.2-2' }} · }
+            @if (s.min_sell_price) { won't sell below ₹{{ s.min_sell_price | number: '1.2-2' }} · }
+            {{ s.demat_qty != null ? 'demat ' + s.demat_qty : '' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="signal-row">
+        <span class="signal" [class]="'signal ' + (s.signal ?? 'HOLD').toLowerCase()">{{ s.signal }}</span>
+        <span>{{ s.reason }}</span>
+      </div>
+
+      @if (s.rules?.length) {
+        <div class="rules">
+          <strong>Armed rules</strong>
+          <ul>
+            @for (r of s.rules; track r) { <li>{{ r }}</li> }
+          </ul>
+        </div>
+      } @else if (s.next_trigger) {
+        <p class="next"><strong>Next trigger:</strong> {{ s.next_trigger }}</p>
+      }
+      @if (s.last_action) { <p class="action">{{ s.last_action }}</p> }
+      <p class="muted small">
+        {{ s.candles }} × {{ s.candle_interval }} candles · checked
+        {{ s.checked_at | date: 'HH:mm:ss' }} ({{ s.trigger }}) · auto every {{ intervalSeconds() }}s
+      </p>
+    }
+  } @else {
+    <p class="muted">Loading…</p>
+  }
+
+  <!-- ============ strategy list ============ -->
+  @if (config(); as cfg) {
+    <div class="strategies">
+      <div class="list-head">
+        <h3>Strategies</h3>
+        <button class="btn sm primary" (click)="addOpen.set(true)">+ Add new strategy</button>
+      </div>
+
+      @if (catalog(); as cat) {
+        <ul class="list">
+          @for (p of cat.presets; track p.key) {
+            @let selected = p.key === cfg.active;
+            @let open = expanded() === p.key;
+            <li [class.selected]="selected" [class.open]="open">
+              <button class="row" (click)="toggle(p.key)" [attr.aria-expanded]="open">
+                <span class="dot" aria-hidden="true"></span>
+                <span class="row-text">
+                  <span class="name">{{ p.name }} @if (selected) { <span class="pill green">Selected</span> }</span>
+                  <span class="limits">{{ summary(p.fields, cfg.limits[p.key]) }}</span>
+                </span>
+                <span class="caret" aria-hidden="true">▸</span>
+              </button>
+              <div class="collapse" [attr.inert]="open ? null : ''">
+                <div class="inner">
+                  <p class="desc">{{ p.description }}</p>
+                  <app-param-form [fields]="p.fields" [values]="cfg.limits[p.key]" [actions]="strategyActions(p.key)"
+                                  [busy]="savingRow() === p.key" [error]="errors()[p.key] ?? null"
+                                  (submitted)="onStrategyForm(p, $event)" />
+                </div>
+              </div>
+            </li>
+          }
+
+          <!-- shared by every strategy -->
+          @let ordersOpen = expanded() === ORDERS;
+          <li class="orders" [class.open]="ordersOpen">
+            <button class="row" (click)="toggle(ORDERS)" [attr.aria-expanded]="ordersOpen">
+              <span class="dot gear" aria-hidden="true">⚙</span>
+              <span class="row-text">
+                <span class="name">Order settings <span class="muted small">(used by every strategy)</span></span>
+                <span class="limits">{{ summary(cat.common_fields, cfg.order_settings) }}</span>
+              </span>
+              <span class="caret" aria-hidden="true">▸</span>
+            </button>
+            <div class="collapse" [attr.inert]="ordersOpen ? null : ''">
+              <div class="inner">
+                <app-param-form [fields]="cat.common_fields" [values]="cfg.order_settings" [actions]="orderActions"
+                                [busy]="savingRow() === ORDERS" [error]="errors()[ORDERS] ?? null"
+                                (submitted)="onOrderForm($event)" />
+              </div>
+            </div>
+          </li>
+        </ul>
+      } @else {
+        <p class="muted small">Loading strategies…</p>
+      }
+    </div>
+  }
+</section>
+
+<app-add-strategy-dialog [open]="addOpen()" (closed)="addOpen.set(false)" />

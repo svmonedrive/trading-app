@@ -1,0 +1,38 @@
+<form (submit)="$event.preventDefault(); run(actions()[0].id)">
+  <div class="fields">
+    @for (f of fields(); track f.key) {
+      <label class="field" [title]="f.help">
+        <span class="lbl">{{ f.label }} @if (f.unit) { <small>({{ f.unit }})</small> }</span>
+        @if (f.kind === 'select') {
+          <select (change)="set(f.key, $any($event.target).value)">
+            @for (o of f.options; track o.value) {
+              <option [value]="o.value" [selected]="o.value === get(f.key)">{{ o.label }}</option>
+            }
+          </select>
+        } @else {
+          <input type="number" inputmode="decimal" required
+                 [attr.min]="f.min" [attr.max]="f.max" [attr.step]="f.step ?? 'any'"
+                 [value]="get(f.key)" (input)="set(f.key, $any($event.target).value)" />
+        }
+        @if (f.help) { <small class="help">{{ f.help }}</small> }
+      </label>
+    }
+  </div>
+
+  @if (localError() ?? error(); as err) {
+    <p class="error-text" role="alert">{{ err }}</p>
+  }
+
+  <div class="actions">
+    @for (a of actions(); track a.id; let first = $first) {
+      <button class="btn sm" [class.primary]="a.primary" [type]="first ? 'submit' : 'button'"
+              (click)="first ? null : run(a.id)" [disabled]="busy()">
+        {{ busy() && first ? 'Saving…' : a.label }}
+      </button>
+    }
+    @if (dirty()) {
+      <button class="btn sm ghost" type="button" (click)="reset()" [disabled]="busy()">Undo changes</button>
+      <span class="unsaved small">Unsaved changes</span>
+    }
+  </div>
+</form>

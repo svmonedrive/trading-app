@@ -1,0 +1,35 @@
+@let r = orders();
+<section class="card">
+  <div class="card-head">
+    <h2>Today's Order Book</h2>
+    <span class="muted small">{{ r?.mode === 'PAPER' ? 'Simulated (paper) orders' : 'From Zerodha kite.orders()' }}</span>
+  </div>
+  @if (r?.error) { <p class="error-text">{{ r!.error }}</p> }
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th><th>Order ID</th><th>Symbol</th><th>Side</th>
+          <th class="num">Qty</th><th class="num">Price</th><th>Status</th><th>Status message</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (o of r?.orders ?? []; track o.order_id) {
+          <tr>
+            <td>{{ o.timestamp | date: 'HH:mm:ss' }}</td>
+            <td class="mono small">{{ o.order_id }}</td>
+            <td>{{ o.tradingsymbol }}</td>
+            <td><span class="side" [class.buy]="o.transaction_type === 'BUY'" [class.sell]="o.transaction_type === 'SELL'">{{ o.transaction_type }}</span></td>
+            <td class="num">{{ o.filled_quantity != null ? o.filled_quantity + '/' : '' }}{{ o.quantity }}</td>
+            <td class="num">{{ o.price | number: '1.2-2' }}</td>
+            <td><span [class]="statusClass(o)">{{ o.status }}</span></td>
+            <td class="msg" [class.reject]="o.status === 'REJECTED'">{{ o.status_message || '—' }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="8" class="empty">No orders today.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
