@@ -61,18 +61,24 @@ try {
     }
 
     # ---------------------------------------------------------------- 1. portable Python
-    if (Test-Path $Py) {
+    # Marker written only after Python + pip are fully set up, so an interrupted run is redone, not half-used.
+    $PyReady = Join-Path $RtDir '.setup-complete'
+    if ((Test-Path $PyReady) -and (Test-Path $Py)) {
         Step "Portable Python already present: $(& $Py --version)"
     } else {
+        if (Test-Path $RtDir) { Remove-Item -LiteralPath $RtDir -Recurse -Force }   # leftovers of an interrupted run
         Step "Downloading portable Python $PyVersion from python.org (about 11 MB)"
-        $zip = Join-Path $env:TEMP "python-$PyVersion-embed-amd64.zip"
+        $zip = Join-Path $env:TEMP "nb-python-$PyVersion-$([guid]::NewGuid().ToString('N')).zip"   # unique: parallel/old runs can't collide
         try {
             Invoke-WebRequest -UseBasicParsing -Uri "https://www.python.org/ftp/python/$PyVersion/python-$PyVersion-embed-amd64.zip" -OutFile $zip
         } catch {
             Fail "Could not download Python ($($_.Exception.Message)). Check the internet connection / company proxy and run setup.bat again."
         }
-        New-Item -ItemType Directory -Force -Path $RtDir | Out-Null
-        Expand-Archive -Path $zip -DestinationPath $RtDir -Force
+        Step "Unpacking portable Python"
+        # .NET's zip extraction, not Expand-Archive: Expand-Archive (PowerShell 5.1) can stall for minutes on PCs
+        # with security software that inspects every program file it writes.
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($zip, $RtDir)
         Remove-Item $zip -Force
 
         # The embeddable build ignores site-packages until 'import site' is enabled in its ._pth file.
@@ -81,7 +87,7 @@ try {
         (Get-Content $pth.FullName) -replace '^#\s*import site\s*$', 'import site' | Set-Content -Encoding Ascii $pth.FullName
 
         Step "Installing pip into portable Python"
-        $getPip = Join-Path $env:TEMP 'get-pip.py'
+        $getPip = Join-Path $env:TEMP "nb-get-pip-$([guid]::NewGuid().ToString('N')).py"
         try {
             Invoke-WebRequest -UseBasicParsing -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile $getPip
         } catch {
@@ -90,6 +96,7 @@ try {
         & $Py $getPip --no-cache-dir --no-warn-script-location --disable-pip-version-check
         if ($LASTEXITCODE -ne 0) { Fail "pip installation failed." }
         Remove-Item $getPip -Force
+        Set-Content -LiteralPath $PyReady -Value "Python $PyVersion set up $(Get-Date -Format s)" -Encoding Ascii
     }
 
     # ---------------------------------------------------------------- 2. packages
