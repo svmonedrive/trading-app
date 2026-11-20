@@ -272,12 +272,40 @@ def open_app_window() -> None:
 
 
 def already_running() -> bool:
-    """Another launcher already serves the app on this port (e.g. shortcut clicked twice)."""
+    """Another NIFTYBEES launcher already serves the app on this port (e.g. shortcut clicked twice).
+    Checks the reply is really ours - a dev server (`ng serve`) answers every URL with a web page."""
     try:
         with urllib.request.urlopen(f"{APP_URL}/launcher/status", timeout=2) as r:
-            return r.status == 200
+            data = json.loads(r.read().decode("utf-8"))
+            return isinstance(data, dict) and "backend_running" in data and "app_mode" in data
     except Exception:
         return False
+
+
+def port_in_use() -> bool:
+    """Something already listens on the port - on IPv4 OR IPv6. Both matter: we listen on 127.0.0.1, but the
+    browser resolves 'localhost' to ::1 first, so a dev server on [::1]:4200 (ng serve does that) would
+    silently get the app window instead of us."""
+    for family, addr in ((socket.AF_INET, "127.0.0.1"), (socket.AF_INET6, "::1")):
+        try:
+            with socket.socket(family, socket.SOCK_STREAM) as s:
+                s.settimeout(0.5)
+                if s.connect_ex((addr, PORT)) == 0:
+                    return True
+        except OSError:
+            pass  # e.g. IPv6 disabled on this PC
+    return False
+
+
+def show_error(message: str) -> None:
+    """In app mode there is no console - show a Windows message box (and log it)."""
+    log(f"ERROR: {message}")
+    if APP_MODE and "--no-window" not in sys.argv:
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(None, message, "NIFTYBEES Algo", 0x10)  # MB_ICONERROR
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------- HTTP
@@ -364,10 +392,20 @@ def main() -> None:
     if already_running():  # e.g. the shortcut was clicked again - just show the app
         open_app_window()
         return
+    if port_in_use():
+        show_error(f"Port {PORT} is already used by another program (for example a development server like "
+                   f"'npm start' / 'ng serve').\n\nClose that program and open NIFTYBEES Algo again.")
+        sys.exit(1)
     ui = find_ui()
     if not ui:
-        sys.exit("Dashboard files not found (app\\ or frontend\\dist). In the repo, run `npm run build` in frontend\\.")
-    _server = ThreadingHTTPServer((HOST, PORT), partial(Handler, directory=str(ui)))
+        show_error("The app's files were not found (app\\ or frontend\\dist). Unzip NIFTYBEES-Algo again, "
+                   "or in the repo run `npm run build` in frontend\\.")
+        sys.exit(1)
+    try:
+        _server = ThreadingHTTPServer((HOST, PORT), partial(Handler, directory=str(ui)))
+    except OSError as exc:
+        show_error(f"Could not start on port {PORT}: {exc}")
+        sys.exit(1)
     log(f"NIFTYBEES Algo on {APP_URL} | ui {ui} | python {find_python() or 'NOT SET UP'} | "
         f"backend running: {backend_running()} | mode: {'app (hidden)' if APP_MODE else 'dev'}")
 
