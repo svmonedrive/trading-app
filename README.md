@@ -132,9 +132,19 @@ To add a strategy in code, subclass `Preset` in `backend/src/app/strategy/preset
 ## 6. Sharing the app with others
 ```powershell
 cd C:\NON_ESCRIBA\NIFTY_BEES_TRADING_APP\frontend
-npm run package
+npm run deploy                      # build + publish
+npm run deploy -- --no-push         # build only, upload nothing
 ```
-This builds the UI and creates `frontend\release\NIFTYBEES-Algo\` and `frontend\release\NIFTYBEES-Algo.zip`. Both are git-ignored.
+`npm run deploy` does the following:
+1. Refuses to run if there are uncommitted changes, so the zip always matches a commit. Use `-- --allow-dirty` to override.
+2. Builds the UI and creates `frontend\release\NIFTYBEES-Algo\` and `frontend\release\NIFTYBEES-Algo.zip`. Both are git-ignored.
+3. Pushes the zip and a short `README.md` to the **`downloads`** branch on GitHub, like `angular-cli-ghpages` does.
+   - The branch holds only the release; each deploy adds one commit, so older versions stay available.
+   - Your working folder and current branch are never touched.
+
+**Download link.** The repo is private, so this only works for people you invite as collaborators, logged in to GitHub:
+`https://github.com/svmonedrive/trading-app/raw/refs/heads/downloads/NIFTYBEES-Algo.zip`
+Alternatively, they can open the `downloads` branch on GitHub, click the zip, then click *Download*.
 
 - **What's in the zip:**
   - `app\` (the built UI)

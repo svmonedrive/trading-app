@@ -1,14 +1,23 @@
-// `npm run package` - builds the UI and assembles a ready-to-share NIFTYBEES-Algo folder + zip.
+// `npm run deploy` - builds the UI, assembles the ready-to-share NIFTYBEES-Algo folder + zip, and pushes the
+// zip to the `downloads` branch on GitHub (like angular-cli-ghpages does with gh-pages).
 //
 //   frontend/release/NIFTYBEES-Algo/        (inspect it)
-//   frontend/release/NIFTYBEES-Algo.zip     (send it)
+//   frontend/release/NIFTYBEES-Algo.zip     (the file that gets published)
+//   origin/downloads: NIFTYBEES-Algo.zip + README.md   (download link for invited people)
+//
+// Options (after `--`, e.g. `npm run deploy -- --no-push`):
+//   --no-push      build everything, but don't upload (prints what would be pushed)
+//   --allow-dirty  allow deploying with uncommitted changes (normally refused, so the zip matches a commit)
+//
+// Publishing never touches your working folder, index or current branch: the `downloads` commit is built
+// directly in git (hash-object / mktree / commit-tree) and pushed to origin.
 //
 // Contents: app/ (built UI), backend/ (code + requirements + .env.example + CONFIG.md), launcher.py,
 // setup.bat/.ps1, uninstall.bat/.ps1, GETTING_STARTED.md, VERSION.txt.
 // Python is NOT included: the receiver's setup.bat downloads portable Python 3.12 (python.org) and the
 // packages (PyPI) into the app folder.
 // NEVER included: .env, data/ (token, orders), .venv, logs. A safety check fails the build otherwise.
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,8 +29,26 @@ const RELEASE = join(FRONTEND, 'release');
 const OUT = join(RELEASE, NAME);
 const ZIP = join(RELEASE, `${NAME}.zip`);
 
+const BRANCH = 'downloads';
+const NO_PUSH = process.argv.includes('--no-push');
+const ALLOW_DIRTY = process.argv.includes('--allow-dirty');
+
 const step = (msg) => console.log(`\n==> ${msg}`);
 const run = (cmd, cwd) => execSync(cmd, { cwd, stdio: 'inherit' });
+const git = (args, input) =>
+  execFileSync('git', args, { cwd: REPO, input, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+
+// ---------------------------------------------------------------- 0. pre-checks
+step('Checking git');
+const dirty = git(['status', '--porcelain']);
+if (dirty && !ALLOW_DIRTY) {
+  console.error('\nDEPLOY STOPPED: you have uncommitted changes. Commit them first, so the published zip matches a\n' +
+    'commit (or run `npm run deploy -- --allow-dirty`).\n\n' + dirty);
+  process.exit(1);
+}
+const COMMIT = git(['rev-parse', '--short', 'HEAD']) + (dirty ? '-dirty' : '');
+const ORIGIN = git(['remote', 'get-url', 'origin']);
+console.log(`  commit ${COMMIT}  ->  ${ORIGIN} (branch ${BRANCH})${NO_PUSH ? '  [--no-push]' : ''}`);
 
 // ---------------------------------------------------------------- 1. build the UI
 step('Building the UI (production)');
@@ -51,7 +78,9 @@ copy('packaging/setup.ps1', 'setup.ps1');
 copy('packaging/uninstall.bat', 'uninstall.bat');
 copy('packaging/uninstall.ps1', 'uninstall.ps1');
 copy('packaging/GETTING_STARTED.md', 'GETTING_STARTED.md');
-writeFileSync(join(OUT, 'VERSION.txt'), `NIFTYBEES Algo\nPackaged: ${new Date().toISOString()}\nCommit: ${gitCommit()}\n`);
+const BUILT = new Date();
+const VERSION = BUILT.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+writeFileSync(join(OUT, 'VERSION.txt'), `NIFTYBEES Algo\nBuilt: ${VERSION}\nCommit: ${COMMIT}\n`);
 if (!existsSync(join(OUT, 'app', 'favicon.ico'))) throw new Error('app/favicon.ico missing - the shortcut icon needs it');
 
 // ---------------------------------------------------------------- 3. safety check
@@ -95,9 +124,47 @@ for (let attempt = 1; ; attempt++) {
   }
 }
 const mb = (statSync(ZIP).size / 1024 / 1024).toFixed(1);
-console.log(`\nDone.\n  Folder: ${OUT}\n  Zip:    ${ZIP} (${mb} MB)\n`);
-console.log('Share the zip. The receiver unzips it and runs setup.bat once (needs internet); after that the');
-console.log('"NIFTYBEES Algo" shortcut opens the app.');
+console.log(`  ${ZIP} (${mb} MB)`);
+
+// ---------------------------------------------------------------- 5. publish to the `downloads` branch
+step(`Publishing to branch '${BRANCH}'`);
+const url = downloadUrl(ORIGIN);
+const readme = [
+  '# NIFTYBEES Algo - download',
+  '',
+  `**[Download NIFTYBEES-Algo.zip](${url ?? `${NAME}.zip`})** (${mb} MB)`,
+  '',
+  `- Built: ${VERSION}`,
+  `- From commit: \`${COMMIT}\``,
+  '',
+  '## Install (Windows 10/11, 64-bit)',
+  '1. Unzip into a folder you keep, e.g. `Documents\\NIFTYBEES-Algo`.',
+  '2. Double-click `setup.bat` (needs internet, ~2-5 min, no admin rights).',
+  '3. Open the **NIFTYBEES Algo** shortcut. The app guides you through the rest.',
+  '',
+  'Details: `GETTING_STARTED.md` inside the zip.',
+  '',
+  'This branch only holds the release zip. It is updated by `npm run deploy` (frontend/) - do not commit to it by hand.',
+  '',
+].join('\n');
+
+// Build the commit directly in git - the working folder, index and current branch are never touched.
+const zipBlob = git(['hash-object', '-w', ZIP]);
+const readmeBlob = git(['hash-object', '-w', '--stdin'], readme);
+const tree = git(['mktree'], `100644 blob ${zipBlob}\t${NAME}.zip\n100644 blob ${readmeBlob}\tREADME.md\n`);
+const remoteTip = git(['ls-remote', '--heads', 'origin', BRANCH]).split(/\s+/)[0] || '';
+if (remoteTip) git(['fetch', '--quiet', 'origin', BRANCH]); // parent commit must exist locally
+const message = `NIFTYBEES-Algo ${VERSION} (from ${COMMIT})`;
+const commit = git(['commit-tree', tree, ...(remoteTip ? ['-p', remoteTip] : []), '-m', message]);
+console.log(`  ${remoteTip ? `new commit on top of ${remoteTip.slice(0, 7)}` : 'first commit of the branch'}: ` +
+  `${commit.slice(0, 7)} "${message}"`);
+
+if (NO_PUSH) {
+  console.log(`\n--no-push: nothing uploaded. To publish this exact commit:\n  git push origin ${commit}:refs/heads/${BRANCH}`);
+} else {
+  execFileSync('git', ['push', 'origin', `${commit}:refs/heads/${BRANCH}`], { cwd: REPO, stdio: 'inherit' });
+  console.log(`\nDeployed.${url ? `\n  Download link (people you invited to the repo, logged in to GitHub):\n  ${url}` : ''}`);
+}
 
 // ---------------------------------------------------------------- helpers
 function walk(dir) {
@@ -105,10 +172,8 @@ function walk(dir) {
     e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]);
 }
 
-function gitCommit() {
-  try {
-    return execSync('git rev-parse --short HEAD', { cwd: REPO }).toString().trim();
-  } catch {
-    return 'unknown';
-  }
+/** https://github.com/<owner>/<repo>/raw/refs/heads/downloads/NIFTYBEES-Algo.zip (GitHub remotes only). */
+function downloadUrl(remote) {
+  const m = remote.match(/github\.com[:/]([^/]+)\/(.+?)(\.git)?$/);
+  return m ? `https://github.com/${m[1]}/${m[2]}/raw/refs/heads/${BRANCH}/${NAME}.zip` : null;
 }
