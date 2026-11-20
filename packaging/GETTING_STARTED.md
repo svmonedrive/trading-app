@@ -11,19 +11,19 @@ A small app that runs on **your own Windows laptop**. It watches NIFTYBEES and p
 1. Unzip `NIFTYBEES-Algo.zip` into a folder you'll keep, e.g. `Documents\NIFTYBEES-Algo`. Don't run it from inside the zip.
 2. Double-click **`setup.bat`**. It takes about 2–5 minutes the first time.
    - It downloads a portable Python from python.org and the packages the app needs from PyPI. Both go **into this folder only**; nothing is installed on Windows.
-   - It creates a **NIFTYBEES Algo** shortcut on your Desktop and in the Start menu, then opens the app.
+   - It adds **NIFTYBEES Algo** to your **Start menu**, then opens the app.
 3. The app shows a short setup guide:
    1. Create your Kite Connect app, using the Redirect URL shown, with a Copy button.
    2. Paste the app's **API key** and **API secret**, then click **Save keys**. The app then starts the backend by itself.
    3. **Login to Zerodha**, check the **Public IP** bar, pick a strategy, and switch **Algo** on.
 
 ## 2. Every day
-- Open the **NIFTYBEES Algo** shortcut. Everything starts by itself in the background, with no black windows, and the app opens in its own window.
-  - **No shortcut** (some company PCs block creating them): double-click **`Open NIFTYBEES Algo.cmd`** in the app folder instead. It does the same thing. To get a Desktop icon, right-click it and choose *Send to → Desktop (create shortcut)*.
+- Open **NIFTYBEES Algo** from the Start menu (type "NIFTYBEES" after pressing the Windows key). Everything starts by itself in the background, with no black windows, and the app opens in its own window.
+  - **Not in the Start menu** (some company PCs block creating shortcuts): double-click **`Open NIFTYBEES Algo.cmd`** in the app folder instead. It does the same thing. If you want a Desktop icon, right-click it and choose *Send to → Desktop (create shortcut)*.
 - **Login to Zerodha** (top right). Zerodha logs everyone out every morning around 6 AM.
 - If the **Public IP** bar is red, click **Fix** and follow the steps to whitelist your IP.
 
-**Closing the app window does NOT stop the bot.** It keeps running in the background, which is what lets it trade. Open the shortcut again to see it.
+**Closing the app window does NOT stop the bot.** It keeps running in the background, which is what lets it trade. Open it from the Start menu again to see it.
 
 **To stop everything,** click **⏻ Quit** in the app.
 

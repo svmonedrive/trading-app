@@ -1,7 +1,7 @@
 # NIFTYBEES Algo - uninstall (run via uninstall.bat).
 #   1. Stops the app if it is running (asks it to Quit; then stops anything still running from this folder)
 #   2. Offers to back up your settings, order history and API keys to Documents
-#   3. Removes the "NIFTYBEES Algo" shortcuts (Desktop + Start menu)
+#   3. Removes the "NIFTYBEES Algo" shortcut (Start menu; also a Desktop one made by older versions)
 #   4. Offers to delete this folder
 # Only touches this folder, the two shortcuts and (if you say yes) a new backup folder in Documents.
 param(
