@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from config import now_ist
+from app.core.config import now_ist
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS orders (

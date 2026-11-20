@@ -18,11 +18,11 @@ from typing import Any
 import pandas as pd
 import yfinance as yf
 
-from config import ConfigStore, Settings, market_status, now_ist
-from db import TradeDB
-from ip_monitor import IPMonitor
-from kite_service import KiteService, normalize_kite_order
-from presets import PRESETS, Signals, build_params, compose_plan
+from app.core.config import ConfigStore, Settings, market_status, now_ist
+from app.core.db import TradeDB
+from app.services.ip_monitor import IPMonitor
+from app.services.kite_service import KiteService, normalize_kite_order
+from app.strategy.presets import PRESETS, Signals, build_params, compose_plan
 
 TICK_SIZE = 0.01  # NSE tick size for NIFTYBEES
 

@@ -4,21 +4,29 @@ Local-only algo bot for **NIFTYBEES** on Zerodha Kite Connect (Personal API), wi
 
 ```
 NIFTY_BEES_TRADING_APP/
+├── start.bat / launcher.py      Daily start: serves the dashboard, "Start Backend Server" button
 ├── backend/                     FastAPI on http://localhost:8000
-│   ├── main.py                  API routes + APScheduler (IP check 60 s, strategy 300 s)
-│   ├── config.py                .env settings, config.json state, NSE market hours
-│   ├── db.py                    algo.db (SQLite): bot orders + activity log
-│   ├── ip_monitor.py            Live public IP (v4/v6) vs whitelisted IP
-│   ├── ip_sharing.py            Shared (CGNAT) vs dedicated IP detection
-│   ├── kite_service.py          Kite login, LIMIT orders, order book, holdings
-│   ├── strategy.py              RSI mean-reversion strategy + safety-gated engine
-│   ├── requirements.txt
-│   └── .env.example
+│   ├── .env                     SETTINGS: Kite API key/secret, DRY_RUN, intervals (secret - not in git)
+│   ├── .env.example             SETTINGS template
+│   ├── requirements.txt         Python packages
+│   ├── CONFIG.md                what every .env setting and data/config.json key means
+│   ├── data/                    RUNTIME DATA (not in git)
+│   │   ├── config.json          saved state: selected strategy + limits, whitelisted IP, Zerodha token
+│   │   └── algo.db              SQLite: bot orders + activity log
+│   └── src/app/                 CODE
+│       ├── main.py              API routes + scheduler (IP check, strategy check)
+│       ├── core/
+│       │   ├── config.py        loads .env + data/config.json, NSE market hours
+│       │   └── db.py            orders + activity log (data/algo.db)
+│       ├── services/
+│       │   ├── kite_service.py  Zerodha login, LIMIT orders, order book, holdings
+│       │   ├── ip_monitor.py    live public IP vs whitelisted IP
+│       │   └── ip_sharing.py    shared (CGNAT) vs dedicated IP detection
+│       └── strategy/
+│           ├── engine.py        runs the selected strategy, safety gates, places orders
+│           └── presets.py       the strategy list + their editable limits
 └── frontend/                    Angular 22 standalone + zoneless + signals, http://localhost:4200
-    └── src/app/
-        ├── app.component.ts / .html / .css
-        ├── app.config.ts
-        └── trading.service.ts
+    └── src/app/                 one folder per component (header, live-strategy, order-list, ...)
 ```
 
 ## 1. One-time setup
@@ -57,8 +65,7 @@ After changing frontend code, rebuild with `npx ng build` in `frontend\` so the 
 ```powershell
 # Terminal 1: backend
 cd C:\NON_ESCRIBA\NIFTY_BEES_TRADING_APP\backend
-.\.venv\Scripts\Activate.ps1
-uvicorn main:app --host 127.0.0.1 --port 8000
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir src --host 127.0.0.1 --port 8000
 ```
 ```powershell
 # Terminal 2: frontend
@@ -98,11 +105,11 @@ To undo: `netsh interface ipv6 set privacy state=enabled store=persistent` and `
 - The bot boots **PAUSED** every time the backend starts.
 - Before any order, all of these must pass: algo running, live public IP = whitelisted IP, NSE hours 09:15–15:30 IST on Mon–Fri, Zerodha session active (LIVE mode only), and a yfinance price at most 20 minutes old.
 - Orders are always **LIMIT** orders (`LTP ± limit_buffer_pct`, default 0.10%, rounded to the ₹0.01 tick) with `CNC` product and `DAY` validity.
-- The bot only sells the quantity **it bought** (tracked in `algo.db`). Your existing NIFTYBEES holdings are never sold.
+- The bot only sells the quantity **it bought** (tracked in `backend/data/algo.db`). Your existing NIFTYBEES holdings are never sold.
 - **No-loss rule:** a SELL only goes through if the sell price is at least `min_profit_pct` (default 0.5%) above the bot's average buy price. Otherwise the bot keeps holding. Set it above your charges (STT, exchange fees, DP charge).
 - The bot stops buying once it holds `max_holding_qty`.
 - There is no new order while an earlier one is still OPEN. After a rejection there is a 15-minute cooldown.
-- Add NSE trading holidays to `"market_holidays"` in `backend/config.json` (e.g. `"2026-12-25"`).
+- Add NSE trading holidays to `"market_holidays"` in `backend/data/config.json` (e.g. `"2026-12-25"`).
 - The API has **no authentication**. Keep it bound to `127.0.0.1`.
 
 ## 5. Strategies (Live Strategy card)
@@ -120,7 +127,7 @@ To undo: `netsh interface ipv6 set privacy state=enabled store=persistent` and `
 
 API: `GET /api/strategy/presets`, `GET /api/strategy/config`, `PUT /api/strategy/active`, `PUT /api/strategy/limits/{key}`, `PUT /api/strategy/order-settings`.
 
-To add a strategy in code, subclass `Preset` in `backend/presets.py` (declare its `fields`, implement `evaluate`) and add it to `PRESETS`. The UI form is generated from `fields`, so no frontend change is needed.
+To add a strategy in code, subclass `Preset` in `backend/src/app/strategy/presets.py` (declare its `fields`, implement `evaluate`) and add it to `PRESETS`. The UI form is generated from `fields`, so no frontend change is needed.
 
 ## 6. PWA
 `ng add @angular/pwa` has been applied. The service worker only runs in a production build:

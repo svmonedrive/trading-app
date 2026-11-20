@@ -18,9 +18,9 @@ from typing import Any
 
 import requests
 
-from config import ConfigStore, Settings, now_ist
-from db import TradeDB
-from ip_sharing import detect_sharing
+from app.core.config import ConfigStore, Settings, now_ist
+from app.core.db import TradeDB
+from app.services.ip_sharing import detect_sharing
 
 SHARING_RECHECK_SECONDS = 30 * 60
 MAX_HISTORY = 20

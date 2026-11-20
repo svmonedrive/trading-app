@@ -12,7 +12,10 @@ from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).resolve().parent
+# backend\  (this file is backend\src\app\core\config.py)
+BASE_DIR = Path(__file__).resolve().parents[3]
+DATA_DIR = BASE_DIR / "data"  # runtime data: config.json (saved state, Zerodha token) + algo.db (orders, log)
+DATA_DIR.mkdir(exist_ok=True)
 load_dotenv(BASE_DIR / ".env")
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -41,8 +44,8 @@ class Settings:
     ip_lookup_url: str = os.getenv("IP_LOOKUP_URL", "https://api64.ipify.org?format=json")
     # Second, independent service used to detect ISPs that rotate shared IPs per connection. Empty = off.
     ip_secondary_lookup_url: str = os.getenv("IP_SECONDARY_LOOKUP_URL", "https://icanhazip.com")
-    config_path: Path = BASE_DIR / "config.json"
-    db_path: Path = BASE_DIR / "algo.db"
+    config_path: Path = DATA_DIR / "config.json"
+    db_path: Path = DATA_DIR / "algo.db"
 
     @property
     def mode(self) -> str:

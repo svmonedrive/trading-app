@@ -58,7 +58,7 @@ def start_backend() -> dict:
     py = f'"{VENV_PYTHON}"' if " " in str(VENV_PYTHON) else str(VENV_PYTHON)
     # cmd /k keeps the window open if uvicorn exits, so a crash message stays readable.
     command = (f'cmd.exe /k "title NIFTYBEES Backend (close to stop) && '
-               f'{py} -m uvicorn main:app --host {BACKEND_HOST} --port {BACKEND_PORT}"')
+               f'{py} -m uvicorn app.main:app --app-dir src --host {BACKEND_HOST} --port {BACKEND_PORT}"')
     _proc = subprocess.Popen(command, cwd=BACKEND_DIR, creationflags=subprocess.CREATE_NEW_CONSOLE)
     _started_at = time.monotonic()
     print(f"[launcher] backend start requested (window pid {_proc.pid})")

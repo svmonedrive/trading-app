@@ -1,6 +1,6 @@
 """NIFTYBEES Algo Trader - FastAPI backend (http://localhost:8000).
 
-Run:  uvicorn main:app --host 127.0.0.1 --port 8000
+Run (from backend/):  .venv/Scripts/python.exe -m uvicorn app.main:app --app-dir src --host 127.0.0.1 --port 8000
 (Bind to 127.0.0.1 only - this API has no authentication and can place real orders.)
 """
 from __future__ import annotations
@@ -18,12 +18,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-from config import config_store, market_status, now_ist, settings
-from db import TradeDB
-from ip_monitor import IPMonitor
-from kite_service import KiteNotReady, KiteService
-from presets import PRESETS, presets_catalog, validate_limits, validate_order_settings
-from strategy import StrategyEngine
+from app.core.config import config_store, market_status, now_ist, settings
+from app.core.db import TradeDB
+from app.services.ip_monitor import IPMonitor
+from app.services.kite_service import KiteNotReady, KiteService
+from app.strategy.presets import PRESETS, presets_catalog, validate_limits, validate_order_settings
+from app.strategy.engine import StrategyEngine
 
 
 class _QuietPolling(logging.Filter):
@@ -285,4 +285,4 @@ def get_events(limit: int = Query(50, ge=1, le=500)) -> list[dict[str, Any]]:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="127.0.0.1", port=8000)
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000)

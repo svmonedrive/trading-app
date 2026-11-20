@@ -26,7 +26,7 @@
       @case ('no-launcher') {
         <p>This page isn't served by the launcher, so it can't start the backend for you.</p>
         <p>Close this tab and double-click <span class="mono">start.bat</span>, or run in <span class="mono">backend\</span>:</p>
-        <code class="mono">.\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000</code>
+        <code class="mono">.\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir src --host 127.0.0.1 --port 8000</code>
       }
       @default {
         <p>The dashboard needs the backend at <span class="mono">http://localhost:8000</span> for trading, IP monitoring and market data.</p>

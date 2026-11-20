@@ -12,8 +12,8 @@ from typing import Any
 from kiteconnect import KiteConnect
 from kiteconnect import exceptions as kite_exc
 
-from config import ConfigStore, Settings, now_ist, token_is_fresh
-from db import TradeDB
+from app.core.config import ConfigStore, Settings, now_ist, token_is_fresh
+from app.core.db import TradeDB
 
 _CACHE_TTL_SECONDS = 4.0  # dashboard polls every 5 s; stay well under Kite's rate limits
 
