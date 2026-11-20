@@ -157,8 +157,8 @@ Alternatively, they can open the `downloads` branch on GitHub, click the zip, th
   2. Run `setup.bat` once (needs internet).
      - It downloads portable Python 3.12 from python.org into the folder, with no admin rights and nothing installed system-wide.
      - It installs the packages from PyPI and creates `backend\.env`.
-     - It creates a **NIFTYBEES Algo** shortcut (Desktop and Start menu) and opens the app.
-  3. Every day: open the **NIFTYBEES Algo** shortcut.
+     - It adds a **NIFTYBEES Algo** entry to the Start menu (no Desktop shortcut) and opens the app. pip runs with `--no-cache-dir`, so nothing is left outside the folder.
+  3. Every day: open **NIFTYBEES Algo** from the Start menu.
      - It runs `pythonw launcher.py --app`. The launcher and the backend run hidden, the backend starts by itself, and the app opens in its own window.
      - Closing the window leaves the bot running; **⏻ Quit** in the app stops everything.
   4. On first start, the app's setup dialog asks for **their own** Kite API key and secret, then starts the backend. The header's **⚙ Setup** button reopens it later.

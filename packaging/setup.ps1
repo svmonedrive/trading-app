@@ -1,8 +1,8 @@
 # NIFTYBEES Algo - one-time setup (run via setup.bat). Safe to run again. Needs internet.
 #   1. Portable Python into .\runtime\python   (official python.org "embeddable" build; no admin, nothing system-wide)
-#   2. Python packages from backend\requirements.txt (from PyPI) into that portable Python
+#   2. Python packages from backend\requirements.txt (from PyPI) into that portable Python (no pip download cache)
 #   3. backend\.env created from backend\.env.example (the app asks for your Kite API key/secret on first start)
-#   4. "NIFTYBEES Algo" shortcuts on the Desktop and in the Start menu
+#   4. "NIFTYBEES Algo" shortcut in the Start menu
 #   5. Opens the app
 # To uninstall: run uninstall.bat, then delete this folder. Nothing else on the PC is touched.
 param(
@@ -87,14 +87,14 @@ try {
         } catch {
             Fail "Could not download pip ($($_.Exception.Message))."
         }
-        & $Py $getPip --no-warn-script-location --disable-pip-version-check
+        & $Py $getPip --no-cache-dir --no-warn-script-location --disable-pip-version-check
         if ($LASTEXITCODE -ne 0) { Fail "pip installation failed." }
         Remove-Item $getPip -Force
     }
 
     # ---------------------------------------------------------------- 2. packages
     Step "Installing Python packages from PyPI (first time: a few minutes)"
-    & $Py -m pip install --upgrade --no-warn-script-location --disable-pip-version-check -r (Join-Path $Backend 'requirements.txt')
+    & $Py -m pip install --upgrade --no-cache-dir --no-warn-script-location --disable-pip-version-check -r (Join-Path $Backend 'requirements.txt')
     if ($LASTEXITCODE -ne 0) { Fail "Installing packages failed - see the messages above. Run setup.bat again to retry." }
 
     # ---------------------------------------------------------------- 3. .env
@@ -108,8 +108,8 @@ try {
 
     # ---------------------------------------------------------------- 4. shortcuts
     if (-not $NoShortcuts) {
-        Step "Creating '$AppName' shortcuts (Desktop and Start menu)"
-        $dirs = if ($ShortcutDir) { @($ShortcutDir) } else { @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs')) }
+        Step "Creating the '$AppName' shortcut in the Start menu"
+        $dirs = if ($ShortcutDir) { @($ShortcutDir) } else { @([Environment]::GetFolderPath('Programs')) }
         $made = 0
         foreach ($dir in $dirs) {
             $lnkPath = Join-Path $dir "$AppName.lnk"
@@ -118,7 +118,7 @@ try {
         }
         if ($made -lt $dirs.Count) {
             Write-Host "  You can always open the app with 'Open NIFTYBEES Algo.cmd' in this folder" -ForegroundColor Yellow
-            Write-Host "  (right-click it > Send to > Desktop to make your own shortcut)." -ForegroundColor Yellow
+            Write-Host "  (right-click it > Send to > Desktop if you want an icon)." -ForegroundColor Yellow
         }
     }
 
