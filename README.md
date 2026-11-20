@@ -1,0 +1,130 @@
+# NIFTYBEES Algo Trader (FastAPI + Angular 22)
+
+Local-only algo bot for **NIFTYBEES** on Zerodha Kite Connect (Personal API), with a JioFiber IPv6 whitelist guard.
+
+```
+NIFTY_BEES_TRADING_APP/
+├── backend/                     FastAPI on http://localhost:8000
+│   ├── main.py                  API routes + APScheduler (IP check 60 s, strategy 300 s)
+│   ├── config.py                .env settings, config.json state, NSE market hours
+│   ├── db.py                    algo.db (SQLite): bot orders + activity log
+│   ├── ip_monitor.py            Live public IP (v4/v6) vs whitelisted IP
+│   ├── ip_sharing.py            Shared (CGNAT) vs dedicated IP detection
+│   ├── kite_service.py          Kite login, LIMIT orders, order book, holdings
+│   ├── strategy.py              RSI mean-reversion strategy + safety-gated engine
+│   ├── requirements.txt
+│   └── .env.example
+└── frontend/                    Angular 22 standalone + zoneless + signals, http://localhost:4200
+    └── src/app/
+        ├── app.component.ts / .html / .css
+        ├── app.config.ts
+        └── trading.service.ts
+```
+
+## 1. One-time setup
+
+### Zerodha developer console (https://developers.kite.trade)
+1. Create (or edit) your **Personal** app.
+2. **Redirect URL:** `http://127.0.0.1:8000/api/auth/callback` (or `http://localhost:8000/api/auth/callback`)
+3. **IP whitelist:** your public IP (IPv4 or IPv6). The dashboard shows it, with a Copy button.
+4. Copy the API key and secret into `backend/.env`.
+
+### Backend (PowerShell)
+```powershell
+cd C:\NON_ESCRIBA\NIFTY_BEES_TRADING_APP\backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1          # if blocked: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+pip install -r requirements.txt
+Copy-Item .env.example .env           # then edit .env: KITE_API_KEY, KITE_API_SECRET, keep DRY_RUN=true
+```
+
+### Frontend
+```powershell
+cd C:\NON_ESCRIBA\NIFTY_BEES_TRADING_APP\frontend
+npm install --legacy-peer-deps        # --legacy-peer-deps avoids an npm 10 "edgesOut" bug
+```
+
+## 2. Run
+
+### Everyday: double-click `start.bat`
+It runs `launcher.py`, which serves the built dashboard on http://localhost:4200 and opens it in the browser.
+If the backend isn't running, the page shows a **Start Backend Server** button at the top: it opens the
+backend in its own console window ("NIFTYBEES Backend") and the bar disappears once it is up (~5 s).
+Close that window (or Ctrl+C in it) to stop the backend; closing the launcher does not stop it.
+After changing frontend code, rebuild with `npx ng build` in `frontend\` so the launcher serves the new version.
+
+### Development (two terminals)
+```powershell
+# Terminal 1: backend
+cd C:\NON_ESCRIBA\NIFTY_BEES_TRADING_APP\backend
+.\.venv\Scripts\Activate.ps1
+uvicorn main:app --host 127.0.0.1 --port 8000
+```
+```powershell
+# Terminal 2: frontend
+cd C:\NON_ESCRIBA\NIFTY_BEES_TRADING_APP\frontend
+npx ng serve --open                    # http://localhost:4200 (no Start Backend button: that needs launcher.py)
+```
+API docs: http://localhost:8000/docs
+
+**Daily routine:** open the dashboard → **Login to Zerodha** (tokens expire around 06:00 IST every day) → check that the Public IP bar is green → switch **Algo** on.
+
+## 3. Which IP gets whitelisted (IPv4 or IPv6)
+The monitor looks up your public IP via `api64.ipify.org` (dual-stack). The answer is whichever IP your PC actually uses for outbound traffic. That is the same IP Zerodha sees, because `api.kite.trade` also accepts both IPv4 and IPv6.
+- **IPv6 disabled on the PC:** the IPv4 address is monitored. This is the current setup.
+- **IPv6 enabled later:** the card shows "Connection switched IPv4 → IPv6" and blocks orders until you whitelist the new address.
+
+The card also shows the **IP type**:
+- **Dedicated:** the router itself holds the public IP. This is detected over UPnP when the router allows it.
+- **Shared / CGNAT:** the ISP shares one public IPv4 among many customers. Detected over UPnP, or with a traceroute fallback that checks whether your router's upstream gateway has a private address.
+
+A shared IP can change at any time, and Zerodha may refuse it if another client has already registered it. The app also compares two lookup services (`IP_SECONDARY_LOOKUP_URL`) and blocks orders if they disagree.
+
+### Optional: stop Windows rotating your IPv6 (privacy extensions)
+Only relevant if you use IPv6.
+By default Windows uses a random, rotating *temporary* IPv6 for outbound traffic. Zerodha would see a different IP every few hours. Run **PowerShell as Administrator**:
+```powershell
+netsh interface ipv6 set privacy state=disabled store=persistent
+netsh interface ipv6 set global randomizeidentifiers=disabled store=persistent
+# then reconnect the adapter (or reboot) and verify:
+netsh interface ipv6 show privacy
+ipconfig    # there should no longer be a "Temporary IPv6 Address" line
+```
+After this, your outbound IPv6 is stable until JioFiber gives the router a new **prefix**. That usually happens on a router reboot. When it does, the dashboard turns red: copy the new IP, update it on developers.kite.trade, then click **I Have Updated Zerodha**.
+
+To undo: `netsh interface ipv6 set privacy state=enabled store=persistent` and `netsh interface ipv6 set global randomizeidentifiers=enabled store=persistent`.
+
+## 4. Safety behaviour
+- The bot boots **PAUSED** every time the backend starts.
+- Before any order, all of these must pass: algo running, live public IP = whitelisted IP, NSE hours 09:15–15:30 IST on Mon–Fri, Zerodha session active (LIVE mode only), and a yfinance price at most 20 minutes old.
+- Orders are always **LIMIT** orders (`LTP ± limit_buffer_pct`, default 0.10%, rounded to the ₹0.01 tick) with `CNC` product and `DAY` validity.
+- The bot only sells the quantity **it bought** (tracked in `algo.db`). Your existing NIFTYBEES holdings are never sold.
+- **No-loss rule:** a SELL only goes through if the sell price is at least `min_profit_pct` (default 0.5%) above the bot's average buy price. Otherwise the bot keeps holding. Set it above your charges (STT, exchange fees, DP charge).
+- The bot stops buying once it holds `max_holding_qty`.
+- There is no new order while an earlier one is still OPEN. After a rejection there is a 15-minute cooldown.
+- Add NSE trading holidays to `"market_holidays"` in `backend/config.json` (e.g. `"2026-12-25"`).
+- The API has **no authentication**. Keep it bound to `127.0.0.1`.
+
+## 5. Strategies (Live Strategy card)
+- **Strategy list:** the card lists every strategy.
+  - RSI Mean Reversion
+  - Moving Average Crossover
+  - Bollinger Band Bounce
+  - Buy the Dip %
+  - Fixed Price Levels
+- **Selected strategy:** shown in green. It stays selected until you pick another one.
+- **Limits:** click a strategy to edit its limits. Each strategy keeps its own saved limits.
+- **Order settings:** quantity, max holding, no-loss min profit %, LIMIT buffer and candle size are shared by every strategy.
+- **Re-check:** changing the running strategy, or its limits or order settings, re-runs the check immediately. This is refused while an order is OPEN.
+- **Add new strategy:** the button opens a dialog. The builder inside it is still to be designed.
+
+API: `GET /api/strategy/presets`, `GET /api/strategy/config`, `PUT /api/strategy/active`, `PUT /api/strategy/limits/{key}`, `PUT /api/strategy/order-settings`.
+
+To add a strategy in code, subclass `Preset` in `backend/presets.py` (declare its `fields`, implement `evaluate`) and add it to `PRESETS`. The UI form is generated from `fields`, so no frontend change is needed.
+
+## 6. PWA
+`ng add @angular/pwa` has been applied. The service worker only runs in a production build:
+```powershell
+npx ng build; npx http-server dist/frontend/browser -p 4200
+```
+Then use **Install app** in Chrome or Edge.

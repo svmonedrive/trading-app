@@ -1,0 +1,6 @@
+backend/.env
+backend/.venv/
+backend/config.json
+backend/config.json.tmp
+backend/algo.db
+__pycache__/
